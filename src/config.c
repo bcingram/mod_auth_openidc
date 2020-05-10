@@ -76,6 +76,8 @@
 
 /* validate SSL server certificates by default */
 #define OIDC_DEFAULT_SSL_VALIDATE_SERVER 1
+/* validate issuer by default */
+#define OIDC_DEFAULT_VALIDATE_ISSUER 1
 /* default scope requested from the OP */
 #define OIDC_DEFAULT_SCOPE "openid"
 /* default claim delimiter for multi-valued claims passed in a HTTP header */
@@ -197,6 +199,7 @@
 #define OIDCUserInfoTokenMethod                "OIDCUserInfoTokenMethod"
 #define OIDCTokenBindingPolicy                 "OIDCTokenBindingPolicy"
 #define OIDCSSLValidateServer                  "OIDCSSLValidateServer"
+#define OIDCValidateIssuer                     "OIDCValidateIssuer"
 #define OIDCClientName                         "OIDCClientName"
 #define OIDCClientContact                      "OIDCClientContact"
 #define OIDCScope                              "OIDCScope"
@@ -467,6 +470,21 @@ static const char *oidc_set_ssl_validate_slot(cmd_parms *cmd, void *struct_ptr,
 		rv = ap_set_flag_slot(cmd, cfg, b);
 	return OIDC_CONFIG_DIR_RV(cmd, rv);
 }
+
+/*
+ * set validate issuer slot
+ */
+static const char *oidc_set_validate_issuer_slot(cmd_parms *cmd, void *struct_ptr,
+		const char *arg) {
+	oidc_cfg *cfg = (oidc_cfg *) ap_get_module_config(
+			cmd->server->module_config, &auth_openidc_module);
+	int b = 0;
+	const char *rv = oidc_parse_boolean(cmd->pool, arg, &b);
+	if (rv == NULL)
+		rv = ap_set_flag_slot(cmd, cfg, b);
+	return OIDC_CONFIG_DIR_RV(cmd, rv);
+}
+
 
 /*
  * return the right token endpoint authentication method validation function, based on whether private keys are set
@@ -1144,6 +1162,7 @@ void oidc_cfg_provider_init(oidc_provider_t *provider) {
 	provider->backchannel_logout_supported = OIDC_CONFIG_POS_INT_UNSET;
 
 	provider->ssl_validate_server = OIDC_DEFAULT_SSL_VALIDATE_SERVER;
+	provider->validate_issuer = OIDC_DEFAULT_VALIDATE_ISSUER;
 	provider->client_name = OIDC_DEFAULT_CLIENT_NAME;
 	provider->client_contact = NULL;
 	provider->registration_token = NULL;
@@ -1381,12 +1400,16 @@ void *oidc_merge_server_config(apr_pool_t *pool, void *BASE, void *ADD) {
 			!= OIDC_CONFIG_POS_INT_UNSET ?
 					add->provider.backchannel_logout_supported :
 					base->provider.backchannel_logout_supported;
-
 	c->provider.ssl_validate_server =
 			add->provider.ssl_validate_server
 			!= OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
 					add->provider.ssl_validate_server :
 					base->provider.ssl_validate_server;
+	c->provider.validate_issuer =
+			add->provider.validate_issuer 
+			!= OIDC_DEFAULT_VALIDATE_ISSUER ?
+					add->provider.validate_issuer :
+					base->provider.validate_issuer;
 	c->provider.client_name =
 			apr_strnatcmp(add->provider.client_name, OIDC_DEFAULT_CLIENT_NAME)
 			!= 0 ?
@@ -1478,11 +1501,10 @@ void *oidc_merge_server_config(apr_pool_t *pool, void *BASE, void *ADD) {
 			!= OIDC_DEFAULT_AUTH_REQUEST_METHOD ?
 					add->provider.auth_request_method :
 					base->provider.auth_request_method;
-
-	c->oauth.ssl_validate_server =
-			add->oauth.ssl_validate_server != OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
-					add->oauth.ssl_validate_server :
-					base->oauth.ssl_validate_server;
+        c->oauth.ssl_validate_server =
+                        add->oauth.ssl_validate_server != OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
+                                        add->oauth.ssl_validate_server :
+                                        base->oauth.ssl_validate_server;
 	c->oauth.metadata_url =
 			add->oauth.metadata_url != NULL ?
 					add->oauth.metadata_url : base->oauth.metadata_url;
@@ -2691,6 +2713,13 @@ const command_rec oidc_config_cmds[] = {
 				(void*)APR_OFFSETOF(oidc_cfg, provider.ssl_validate_server),
 				RSRC_CONF,
 				"Require validation of the OpenID Connect OP SSL server certificate for successful authentication (On or Off)"),
+
+		AP_INIT_TAKE1(OIDCValidateIssuer,
+				oidc_set_validate_issuer_slot,
+				(void*)APR_OFFSETOF(oidc_cfg, provider.validate_issuer),
+				RSRC_CONF,
+				"Require validation of token issuer for successful authentication  (On or Off)"),
+
 		AP_INIT_TAKE1(OIDCClientName,
 				oidc_set_string_slot,
 				(void *) APR_OFFSETOF(oidc_cfg, provider.client_name),
