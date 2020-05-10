@@ -1400,6 +1400,7 @@ void *oidc_merge_server_config(apr_pool_t *pool, void *BASE, void *ADD) {
 			!= OIDC_CONFIG_POS_INT_UNSET ?
 					add->provider.backchannel_logout_supported :
 					base->provider.backchannel_logout_supported;
+
 	c->provider.ssl_validate_server =
 			add->provider.ssl_validate_server
 			!= OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
@@ -1501,10 +1502,11 @@ void *oidc_merge_server_config(apr_pool_t *pool, void *BASE, void *ADD) {
 			!= OIDC_DEFAULT_AUTH_REQUEST_METHOD ?
 					add->provider.auth_request_method :
 					base->provider.auth_request_method;
-        c->oauth.ssl_validate_server =
-                        add->oauth.ssl_validate_server != OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
-                                        add->oauth.ssl_validate_server :
-                                        base->oauth.ssl_validate_server;
+
+	c->oauth.ssl_validate_server =
+	                add->oauth.ssl_validate_server != OIDC_DEFAULT_SSL_VALIDATE_SERVER ?
+	                add->oauth.ssl_validate_server :
+	                base->oauth.ssl_validate_server;
 	c->oauth.metadata_url =
 			add->oauth.metadata_url != NULL ?
 					add->oauth.metadata_url : base->oauth.metadata_url;
